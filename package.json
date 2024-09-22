@@ -1,0 +1,20 @@
+{
+  "scripts": {
+    "start": "concurrently --names backend,frontend \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
+    "prepare": "husky",
+    "reset": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.7",
+    "@typescript-eslint/parser": "^5.59.7",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.3.3",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "concurrently": "^9.0.1",
+    "typescript": "~5.1.6"
+  }
+}
