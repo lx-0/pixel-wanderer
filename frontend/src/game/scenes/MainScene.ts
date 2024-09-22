@@ -22,8 +22,6 @@ export default class MainScene extends Phaser.Scene {
   private loadedChunks = new Map<string, Phaser.GameObjects.Image>();
 
   private totalShiftX = 0;
-  private justShifted = false;
-  private shiftCooldownTimer?: Phaser.Time.TimerEvent;
 
   // DEBUG
   private debug = false;
@@ -145,11 +143,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   private handleCameraMovement() {
-    if (this.justShifted) {
-      // Skip camera movement if we've just shifted positions
-      return;
-    }
-
     const camera = this.cameras.main;
     const playerX = this.player.x;
     const cameraLeft = camera.scrollX;
@@ -316,18 +309,11 @@ export default class MainScene extends Phaser.Scene {
       // Shift the camera
       this.cameras.main.scrollX += shiftAmount;
 
-      // Adjust camera pan destination if panning
-      if (this.cameras.main.panEffect.isRunning) {
-        console.log('Adjusting camera pan destination');
-        this.cameras.main.panEffect.destination.x += shiftAmount;
-      }
-
-      // Set a flag to prevent immediate panning
-      this.justShifted = true;
-      this.shiftCooldownTimer = this.time.addEvent({
-        delay: 100, // 100 ms cooldown
-        callback: () => (this.justShifted = false),
-      });
+      // // Adjust camera pan destination if panning
+      // if (this.cameras.main.panEffect.isRunning) {
+      //   console.log('Adjusting camera pan destination');
+      //   this.cameras.main.panEffect.destination.x += shiftAmount;
+      // }
 
       // DEBUG: Shift all debug texts
       this.chunkDebugTexts.forEach((text) => {
