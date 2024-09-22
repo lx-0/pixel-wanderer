@@ -3,7 +3,14 @@
     "start": "concurrently --names backend,frontend \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\"",
     "prepare": "husky",
-    "reset": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
+    "reset:backend": "cd backend && npm run reset && cd ..",
+    "reset:frontend": "cd frontend && npm run reset && cd ..",
+    "reset:backend:full": "cd backend && npm run reset:full && cd ..",
+    "reset:frontend:full": "cd frontend && npm run reset:full && cd ..",
+    "reset:node": "rm -rf node_modules && && npm ci",
+    "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i",
+    "reset": "npm run reset:node && npm run reset:backend && npm run reset:frontend",
+    "reset:full": "npm run reset:node:full && npm run reset:backend:full && npm run reset:frontend:full"
   },
   "devDependencies": {
     "eslint": "^8.50.0",

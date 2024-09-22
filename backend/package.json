@@ -5,7 +5,11 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "reset": "rm -rf dist && rm -rf node_modules/.vite && npm run reset:node",
+    "reset:full": "rm -rf dist && rm -rf node_modules/.vite && npm run reset:node:full",
+    "reset:node": "rm -rf node_modules && npm ci",
+    "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +17,8 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.21.0"
+    "express": "^4.21.0",
+    "node-cache": "^5.1.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
