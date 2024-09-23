@@ -16,3 +16,4 @@ build/
 .env
 
 .bak/
+backend/generated_backgrounds/
