@@ -1,13 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts",
-    "reset": "rm -rf dist && rm -rf node_modules/.vite && npm run reset:node",
-    "reset:full": "rm -rf dist && rm -rf node_modules/.vite && npm run reset:node:full",
+    "start": "node dist/server.js",
+    "dev": "nodemon src/server.ts",
+    "reset": "rm -rf dist",
+    "reset:modules": "npm run reset && npm run reset:node",
+    "reset:full": "npm run reset && npm run reset:node:full",
     "reset:node": "rm -rf node_modules && npm ci",
     "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
   },
@@ -16,13 +17,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "node-cache": "^5.1.2"
+    "form-data": "^4.0.0",
+    "node-cache": "^5.1.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/form-data": "^2.2.1",
     "@types/node": "^22.5.5",
     "nodemon": "^3.1.7",
     "ts-node": "^10.9.2",

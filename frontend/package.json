@@ -6,8 +6,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "reset": "rm -rf dist && npm run reset:node",
-    "reset:full": "rm -rf dist && npm run reset:node:full",
+    "reset": "rm -rf dist && rm -rf node_modules/.vite",
+    "reset:modules": "npm run reset && npm run reset:node",
+    "reset:full": "npm run reset && npm run reset:node:full",
     "reset:node": "rm -rf node_modules && npm ci",
     "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
   },
@@ -23,7 +24,8 @@
   },
   "dependencies": {
     "axios": "^1.7.7",
-    "phaser": "^3.85.2"
+    "phaser": "^3.85.2",
+    "zod": "^3.23.8"
   },
   "engines": {
     "node": ">=20"

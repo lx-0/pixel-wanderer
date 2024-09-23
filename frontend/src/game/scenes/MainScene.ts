@@ -11,6 +11,7 @@ const VISIBLE_CHUNKS = 3; // Number of chunks to keep loaded around the player
 
 const WORLD_BOUND_LEFT = -100000;
 const WORLD_BOUND_WIDTH = 200000;
+const WORLD_NAME = 'construct';
 
 export default class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -27,6 +28,11 @@ export default class MainScene extends Phaser.Scene {
   private currentChunkY = 0;
   private isLoadingChunk = false;
   private loadedChunks = new Map<string, Phaser.GameObjects.Image>();
+
+  // AI Service Selection
+  private aiService = 'stable-diffusion'; // Default AI service
+  private availableAiServices = ['dalle', 'stable-diffusion'];
+  private selectedAiServiceText!: Phaser.GameObjects.Text;
 
   // DEBUG
   private debug = false;
@@ -95,6 +101,9 @@ export default class MainScene extends Phaser.Scene {
 
     // Enable collision between player and platforms
     this.physics.add.collider(this.player, this.platforms); // Enable collision between player and platforms
+
+    // Create AI Service selection UI
+    this.createAiServiceSelectionUI();
 
     // DEBUG: Debug graphics on keyboard press Q
     this.physics.world.drawDebug = false;
@@ -346,7 +355,13 @@ export default class MainScene extends Phaser.Scene {
     this.isLoadingChunk = true;
 
     try {
-      const base64DataUri = await fetchBackground(chunkX, chunkY);
+      const base64DataUri = await fetchBackground(
+        chunkX,
+        chunkY,
+        undefined,
+        this.aiService,
+        WORLD_NAME
+      );
 
       // Use Phaser's Loader to load the image
       this.load.image(`chunk_${chunkKey}`, base64DataUri);
@@ -379,13 +394,14 @@ export default class MainScene extends Phaser.Scene {
 
         // DEBUG
         // Add debug text at the chunk's (0, 0) coordinate
-        const chunkText = this.add.text(
-          chunkPositionX + 10, // Slight offset so it's visible
-          10, // Y position at top
-          `Chunk ${chunkX}`,
-          { font: '16px Arial', color: 'black', backgroundColor: 'white' }
-        );
-        chunkText.setDepth(1); // Ensure it's above the background
+        const chunkText = this.add
+          .text(
+            chunkPositionX + 10, // Slight offset so it's visible
+            10, // Y position at top
+            `Chunk ${chunkX}`,
+            { font: '16px Arial', color: 'black', backgroundColor: 'white' }
+          )
+          .setDepth(1);
         this.chunkDebugTexts.set(chunkKey, chunkText);
 
         this.isLoadingChunk = false;
@@ -430,5 +446,42 @@ export default class MainScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  private createAiServiceSelectionUI() {
+    const startX = 20;
+    const startY = 20;
+    const spacingY = 30;
+
+    // Display the currently selected AI service
+    this.selectedAiServiceText = this.add
+      .text(startX, startY, `Current AI Service: ${this.aiService}`, {
+        font: '16px Arial',
+        color: '#00ff00',
+        backgroundColor: '#000000',
+      })
+      .setDepth(1)
+      .setScrollFactor(0);
+
+    this.availableAiServices.forEach((service, index) => {
+      const text = this.add
+        .text(startX, startY + (index + 1) * spacingY, `Use ${service}`, {
+          font: '16px Arial',
+          color: '#ffffff',
+          backgroundColor: '#000000',
+        })
+        .setDepth(1)
+        .setScrollFactor(0);
+      text.setInteractive({ useHandCursor: true });
+      text.on('pointerdown', () => {
+        this.aiService = service;
+        // Update the UI to reflect the selected service
+        this.updateAiServiceUI();
+      });
+    });
+  }
+
+  private updateAiServiceUI() {
+    this.selectedAiServiceText.setText(`Current AI Service: ${this.aiService}`);
   }
 }

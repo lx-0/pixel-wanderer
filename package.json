@@ -7,9 +7,10 @@
     "reset:frontend": "cd frontend && npm run reset && cd ..",
     "reset:backend:full": "cd backend && npm run reset:full && cd ..",
     "reset:frontend:full": "cd frontend && npm run reset:full && cd ..",
-    "reset:node": "rm -rf node_modules && && npm ci",
+    "reset:node": "rm -rf node_modules && npm ci",
     "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i",
-    "reset": "npm run reset:node && npm run reset:backend && npm run reset:frontend",
+    "reset": "npm run reset:backend && npm run reset:frontend",
+    "reset:modules": "npm run reset:node && npm run reset:backend:modules && npm run reset:frontend:modules",
     "reset:full": "npm run reset:node:full && npm run reset:backend:full && npm run reset:frontend:full"
   },
   "devDependencies": {
