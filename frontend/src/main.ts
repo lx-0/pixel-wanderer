@@ -1,5 +1,7 @@
-import Phaser from 'phaser';
+import { LOGGER_CONFIG } from '@/config';
 import MainScene from '@/game/scenes/MainScene';
+import { Logger } from '@/lib/Logger';
+import Phaser from 'phaser';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -13,5 +15,7 @@ const config: Phaser.Types.Core.GameConfig = {
     },
   },
 };
+
+export const log = new Logger(LOGGER_CONFIG);
 
 new Phaser.Game(config);

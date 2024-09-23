@@ -1,9 +1,11 @@
+import { r } from '@/lib/formatters';
+import { log } from '@/main';
 import Phaser from 'phaser';
 import { fetchBackground } from '../../services/BackgroundService';
 
 // Constants
 const CHUNK_SIZE = 800;
-const VIEW_WIDTH = 800; // TODO: set to 1600
+const _VIEW_WIDTH = 800; // TODO: set to 1600
 const VIEW_HEIGHT = 600; // TODO: set to 1200
 const VISIBLE_CHUNKS = 3; // Number of chunks to keep loaded around the player
 
@@ -14,6 +16,8 @@ export default class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey!: Phaser.Input.Keyboard.Key;
+  private isMovingToTarget = false;
+  private targetPosition!: Phaser.Math.Vector2;
 
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
 
@@ -24,12 +28,12 @@ export default class MainScene extends Phaser.Scene {
   private isLoadingChunk = false;
   private loadedChunks = new Map<string, Phaser.GameObjects.Image>();
 
-  private totalShiftX = 0;
-
   // DEBUG
   private debug = false;
   private toggleDebug: Phaser.Input.Keyboard.Key | undefined;
   private chunkDebugTexts = new Map<string, Phaser.GameObjects.Text>();
+  private debugPlayerText: Phaser.GameObjects.Text | undefined;
+  private debugGraphics: Phaser.GameObjects.Graphics | undefined;
 
   constructor() {
     super('MainScene');
@@ -53,10 +57,10 @@ export default class MainScene extends Phaser.Scene {
 
     // DEBUG
     this.textures.on('onload', (key: unknown) => {
-      console.log(`Texture loaded: ${key}`);
+      log.debug(`Texture loaded: ${key}`);
     });
     this.textures.on('onerror', (key: unknown) => {
-      console.error(`Texture failed to load: ${key}`);
+      log.debug(`Texture failed to load: ${key}`);
     });
   }
   async create() {
@@ -67,14 +71,18 @@ export default class MainScene extends Phaser.Scene {
     // Set global gravity
     this.physics.world.gravity.y = 300; // Adjust the gravity value as needed
 
+    this.input.on('pointerdown', this.handleMouseInput, this);
+
     // Initialize background group
     this.backgroundGroup = this.add.group();
 
     // Create the player sprite after loading the background
     this.createPlayer();
 
-    // Center the camera on the player at game start
-    this.cameras.main.scrollX = this.player.x - this.cameras.main.width / 2;
+    // Follow the player with the camera
+    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    this.cameras.main.setDeadzone(400, 200);
+    this.cameras.main.setZoom(1);
 
     // Load the initial background chunk
     await this.loadVisibleChunks(0, 0);
@@ -92,6 +100,27 @@ export default class MainScene extends Phaser.Scene {
     this.physics.world.drawDebug = false;
     this.physics.world.debugGraphic.clear();
     this.toggleDebug = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+
+    // DEBUG: Draw camera deadzone
+    this.debugGraphics = this.add.graphics().setScrollFactor(0).setDepth(2).setVisible(false);
+    if (this.cameras.main.deadzone) {
+      this.debugGraphics.lineStyle(2, 0x00ff00, 1);
+      this.debugGraphics.strokeRect(
+        200,
+        200,
+        this.cameras.main.deadzone.width,
+        this.cameras.main.deadzone.height
+      );
+    }
+
+    // DEBUG: Create debug text
+    this.debugPlayerText = this.add
+      .text(32, 32, '')
+      .setScrollFactor(0)
+      .setFontSize(12)
+      .setColor('#00ff00')
+      .setBackgroundColor('#000000')
+      .setDepth(2);
   }
 
   createPlayer() {
@@ -112,7 +141,7 @@ export default class MainScene extends Phaser.Scene {
       this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     } else {
       // Handle the case where keyboard input is not available
-      console.error('Keyboard input is not available.');
+      log.error('Keyboard input is not available.');
     }
   }
 
@@ -141,8 +170,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.handlePlayerMovement();
     this.checkNewChunkLoad();
-    this.checkPositionShift();
-    this.handleCameraMovement();
+    // this.handleCameraMovement();
     this.handlePlatformCreation();
 
     // DEBUG: Debug Graphic
@@ -152,20 +180,41 @@ export default class MainScene extends Phaser.Scene {
         this.physics.world.debugGraphic.clear();
       }
       this.physics.world.drawDebug = !this.physics.world.drawDebug;
+      this.debugPlayerText?.setText('');
+      this.debugGraphics?.setVisible(!this.debugGraphics.visible);
     }
     // DEBUG: Camera Position
     if (this.debug) {
-      console.log(`Player position: (${this.player.x}, ${this.player.y})`);
-      console.log(
-        `Camera position: (${this.cameras.main.scrollX}, ${this.cameras.main.scrollY}), CameraRight: ${this.cameras.main.scrollX + this.cameras.main.width}`
-      );
+      const cam = this.cameras.main;
+      if (this.debugPlayerText) {
+        this.debugPlayerText.setText([
+          `Player position: ${r(this.player.x)}, ${r(this.player.y)}`,
+          ...(this.targetPosition
+            ? [`Target position: ${r(this.targetPosition.x)}, ${r(this.targetPosition.y)}`]
+            : []),
+          'Camera ScrollX: ' + cam.scrollX,
+          'Camera ScrollY: ' + cam.scrollY,
+          'Camera Right:' + (cam.scrollX + cam.width),
+          'Camera MidX: ' + cam.midPoint.x,
+          'Camera MidY: ' + cam.midPoint.y,
+          ...(cam.deadzone
+            ? [
+                'deadzone left: ' + cam.deadzone.left,
+                'deadzone right: ' + cam.deadzone.right,
+                'deadzone top: ' + cam.deadzone.top,
+                'deadzone bottom: ' + cam.deadzone.bottom,
+              ]
+            : []),
+        ]);
+      }
     }
   }
 
   private handlePlayerMovement() {
     const speed = 200;
 
-    if (!this.cursors) return;
+    // Reset horizontal velocity
+    this.player.setVelocityX(0);
 
     if (this.cursors.left?.isDown) {
       this.player.setVelocityX(-speed);
@@ -173,22 +222,53 @@ export default class MainScene extends Phaser.Scene {
     } else if (this.cursors.right?.isDown) {
       this.player.setVelocityX(speed);
       this.player.setFlipX(false); // Reset sprite when moving right
-    } else {
-      this.player.setVelocityX(0);
+    } else if (this.isMovingToTarget) {
+      // Move towards the target position
+      this.moveTowardsTarget(speed);
     }
-
-    // if (this.cursors.up?.isDown) {
-    //   this.player.setVelocityY(-speed);
-    // } else if (this.cursors.down?.isDown) {
-    //   this.player.setVelocityY(speed);
-    // } else {
-    //   this.player.setVelocityY(0);
-    // }
 
     // Jumping
     if (this.cursors.up?.isDown && this.player.body?.blocked.down) {
       this.player.setVelocityY(-500); // Adjust jump strength as needed -330
     }
+  }
+
+  private moveTowardsTarget(speed: number) {
+    const playerWorldX = this.player.x;
+    const deltaX = this.targetPosition.x - playerWorldX;
+
+    // Check if the player has reached or passed the target
+    if (Math.abs(deltaX) <= 2) {
+      // Stop the player
+      this.player.setVelocityX(0);
+      this.isMovingToTarget = false;
+      return;
+    }
+
+    // Set velocity towards the target
+    const direction = Math.sign(deltaX);
+    this.player.setVelocityX(direction * speed);
+  }
+
+  private handleMouseInput(pointer: Phaser.Input.Pointer) {
+    // Get the world coordinates of the click, considering camera scroll
+    const clickX = pointer.worldX;
+    const clickY = pointer.worldY;
+
+    // Set the target position
+    this.targetPosition = new Phaser.Math.Vector2(clickX, clickY);
+
+    // Determine the direction to move
+    if (clickX < this.player.x) {
+      // Move left
+      this.player.setFlipX(true);
+    } else {
+      // Move right
+      this.player.setFlipX(false);
+    }
+
+    // Set movement flags
+    this.isMovingToTarget = true;
   }
 
   private handlePlatformCreation() {
@@ -198,7 +278,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   private createPlatform() {
-    const platformWidth = 300; // Width of the platform
+    const platformWidth = 200; // Width of the platform
     const platformHeight = 20; // Height of the platform
     const offsetDistance = 200; // Distance in front of the player
     const offsetY = 0; // Height relative to the player's vertical position
@@ -228,91 +308,11 @@ export default class MainScene extends Phaser.Scene {
     this.platforms.add(platform);
   }
 
-  private handleCameraMovement() {
-    const camera = this.cameras.main;
-    const playerX = this.player.x;
-    const cameraLeft = camera.scrollX;
-    const cameraRight = camera.scrollX + camera.width;
-
-    const leftBoundary = cameraLeft + camera.width * 0.25;
-    const rightBoundary = cameraLeft + camera.width * 0.75;
-
-    // Check if player is beyond the left or right boundary
-    if (playerX < leftBoundary || playerX > rightBoundary) {
-      // Center the camera on the player smoothly
-      if (!camera.panEffect.isRunning) {
-        camera.pan(
-          playerX, // Target x position
-          camera.scrollY, // Keep y position the same
-          1500, // Duration in milliseconds
-          // 'Power2' // Easing function
-          // TODO test uncomment: 'Sine.easeInOut' // Easing function (options include 'Linear', 'Sine.easeInOut', etc.)
-          'Sine.easeInOut'
-        );
-      }
-    }
-  }
-
-  private checkPositionShift() {
-    if (this.cameras.main.panEffect.isRunning) return;
-
-    if (this.player.x >= CHUNK_SIZE) {
-      // Player moved right beyond chunk size
-      this.shiftPositions(-CHUNK_SIZE);
-    } else if (this.player.x <= -CHUNK_SIZE) {
-      // Player moved left beyond chunk size
-      this.shiftPositions(CHUNK_SIZE);
-    }
-  }
-
-  private shiftPositions(shiftAmount: number) {
-    // Update totalShiftX
-    this.totalShiftX -= shiftAmount;
-
-    // Shift all background chunks
-    this.backgroundGroup.children.each((child) => {
-      (child as Phaser.GameObjects.Image).x += shiftAmount;
-      return true;
-    });
-
-    // Shift the player
-    this.player.x += shiftAmount;
-
-    // Shift all platforms
-    this.platforms.getChildren().forEach((platform) => {
-      const rect = platform as Phaser.GameObjects.Rectangle;
-      rect.x += shiftAmount;
-      const body = rect.body as Phaser.Physics.Arcade.StaticBody;
-      body.updateFromGameObject();
-    });
-
-    // // Stop any ongoing camera pan
-    // this.cameras.main.panEffect.reset();
-    // this.cameras.main.panEffect.destroy();
-
-    // Shift the camera
-    this.cameras.main.scrollX += shiftAmount;
-
-    // // Adjust camera pan destination if panning
-    // if (this.cameras.main.panEffect.isRunning) {
-    //   console.log('Adjusting camera pan destination');
-    //   this.cameras.main.panEffect.destination.x += shiftAmount;
-    // }
-
-    // DEBUG
-    console.log(`Shifted by ${this.player.x > 0 ? 'right' : 'left'}`, { shiftAmount });
-
-    // DEBUG: Shift all debug texts
-    this.chunkDebugTexts.forEach((text) => {
-      text.x += shiftAmount;
-    });
-  }
-
   /**
    * Calculate current chunk based on player position.
    */
   private checkNewChunkLoad() {
-    const playerWorldX = this.player.x + this.totalShiftX;
+    const playerWorldX = this.player.x;
     const chunkX = Math.floor(playerWorldX / CHUNK_SIZE);
     const chunkY = 0; // Assuming vertical movement isn't infinite
 
@@ -352,7 +352,7 @@ export default class MainScene extends Phaser.Scene {
       this.load.image(`chunk_${chunkKey}`, base64DataUri);
 
       this.load.on('loaderror', (textureKey: string) => {
-        console.error(`Failed to load chunk ${chunkKey}:`, textureKey);
+        log.error(`Failed to load chunk ${chunkKey}:`, textureKey);
       });
 
       // Wait for the load to complete
@@ -364,8 +364,8 @@ export default class MainScene extends Phaser.Scene {
         //   { base64DataUri, texture, isExisting: this.textures.exists(`chunk_${chunkKey}`) }
         // );
 
-        // Calculate the position considering totalShiftX
-        const chunkPositionX = chunkX * CHUNK_SIZE - this.totalShiftX;
+        // Calculate the position
+        const chunkPositionX = chunkX * CHUNK_SIZE;
 
         // Add the new chunk to the scene
         const chunk = this.add
@@ -382,7 +382,7 @@ export default class MainScene extends Phaser.Scene {
         const chunkText = this.add.text(
           chunkPositionX + 10, // Slight offset so it's visible
           10, // Y position at top
-          `Chunk ${chunkX}, ${chunkY}`,
+          `Chunk ${chunkX}`,
           { font: '16px Arial', color: 'black', backgroundColor: 'white' }
         );
         chunkText.setDepth(1); // Ensure it's above the background
@@ -392,17 +392,17 @@ export default class MainScene extends Phaser.Scene {
       });
 
       // Start the loader
-      console.log(`Loading chunk ${chunkKey}`);
+      log.debug(`🍏 ~ Loading chunk ${chunkKey}`);
       this.load.start();
     } catch (error) {
-      console.error('Error loading new chunk:', error);
+      log.error('Error loading new chunk:', error);
       // TODO: Use a fallback background or notify the player
     } finally {
       this.isLoadingChunk = false;
     }
   }
 
-  private unloadOffscreenChunks(centerChunkX: number, centerChunkY: number) {
+  private unloadOffscreenChunks(centerChunkX: number, _centerChunkY: number) {
     const halfVisibleChunks = Math.floor(VISIBLE_CHUNKS / 2);
 
     // Determine the range of visible chunks
@@ -413,12 +413,11 @@ export default class MainScene extends Phaser.Scene {
     for (const [chunkKey, chunk] of this.loadedChunks.entries()) {
       const [chunkXStr, chunkYStr] = chunkKey.split('_');
       const chunkX = parseInt(chunkXStr, 10);
-      const chunkY = parseInt(chunkYStr, 10);
+      const _chunkY = parseInt(chunkYStr, 10);
 
       // If the chunk is outside the visible range, remove it
       if (chunkX < minVisibleChunkX || chunkX > maxVisibleChunkX) {
-        // DEBUG
-        console.log(`Unloading chunk ${chunkKey}`);
+        log.debug(`💥 ~ Unloading chunk ${chunkKey}`);
 
         chunk.destroy(); // Remove from the scene
         this.loadedChunks.delete(chunkKey); // Remove from the cache
