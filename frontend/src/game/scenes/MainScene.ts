@@ -13,11 +13,14 @@ const WORLD_BOUND_WIDTH = 200000;
 export default class MainScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private spaceKey!: Phaser.Input.Keyboard.Key;
+
+  private platforms!: Phaser.Physics.Arcade.StaticGroup;
+
   private backgroundGroup!: Phaser.GameObjects.Group;
 
   private currentChunkX = 0;
   private currentChunkY = 0;
-
   private isLoadingChunk = false;
   private loadedChunks = new Map<string, Phaser.GameObjects.Image>();
 
@@ -79,6 +82,12 @@ export default class MainScene extends Phaser.Scene {
     // Create ground platform
     this.createGround();
 
+    // Initialize platforms group
+    this.platforms = this.physics.add.staticGroup();
+
+    // Enable collision between player and platforms
+    this.physics.add.collider(this.player, this.platforms); // Enable collision between player and platforms
+
     // DEBUG: Debug graphics on keyboard press Q
     this.physics.world.drawDebug = false;
     this.physics.world.debugGraphic.clear();
@@ -100,6 +109,7 @@ export default class MainScene extends Phaser.Scene {
     // Create cursor keys for movement
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
+      this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     } else {
       // Handle the case where keyboard input is not available
       console.error('Keyboard input is not available.');
@@ -133,6 +143,7 @@ export default class MainScene extends Phaser.Scene {
     this.checkNewChunkLoad();
     this.checkPositionShift();
     this.handleCameraMovement();
+    this.handlePlatformCreation();
 
     // DEBUG: Debug Graphic
     if (this.toggleDebug && Phaser.Input.Keyboard.JustDown(this.toggleDebug)) {
@@ -152,7 +163,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   private handlePlayerMovement() {
-    const speed = 160;
+    const speed = 200;
 
     if (!this.cursors) return;
 
@@ -178,6 +189,43 @@ export default class MainScene extends Phaser.Scene {
     if (this.cursors.up?.isDown && this.player.body?.blocked.down) {
       this.player.setVelocityY(-500); // Adjust jump strength as needed -330
     }
+  }
+
+  private handlePlatformCreation() {
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+      this.createPlatform();
+    }
+  }
+
+  private createPlatform() {
+    const platformWidth = 300; // Width of the platform
+    const platformHeight = 20; // Height of the platform
+    const offsetDistance = 200; // Distance in front of the player
+    const offsetY = 0; // Height relative to the player's vertical position
+
+    // Determine the direction the player is facing
+    const direction = this.player.flipX ? -1 : 1;
+
+    // Calculate platform position
+    const x = this.player.x + direction * offsetDistance;
+    const y = this.player.y + offsetY;
+
+    // Create the rectangle representing the platform
+    const platform = this.add.rectangle(
+      x,
+      y,
+      platformWidth,
+      platformHeight,
+      0x8b4513 // Brown color
+    );
+    platform.setOrigin(0.5, 0.5); // Center the rectangle on x, y
+    platform.setDepth(1); // Ensure it's above the background
+
+    // Enable physics on the rectangle
+    this.physics.add.existing(platform, true); // 'true' makes it a static body
+
+    // Add the platform to the platforms group
+    this.platforms.add(platform);
   }
 
   private handleCameraMovement() {
@@ -229,6 +277,14 @@ export default class MainScene extends Phaser.Scene {
 
     // Shift the player
     this.player.x += shiftAmount;
+
+    // Shift all platforms
+    this.platforms.getChildren().forEach((platform) => {
+      const rect = platform as Phaser.GameObjects.Rectangle;
+      rect.x += shiftAmount;
+      const body = rect.body as Phaser.Physics.Arcade.StaticBody;
+      body.updateFromGameObject();
+    });
 
     // // Stop any ongoing camera pan
     // this.cameras.main.panEffect.reset();
