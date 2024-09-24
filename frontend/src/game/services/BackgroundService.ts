@@ -5,8 +5,23 @@ import { z } from 'zod';
 const API_URL = 'http://localhost:4000'; // Adjust if necessary
 
 const backgroundResponseSchema = z.object({
-  imageData: z.string(),
+  imageData: z.string(), // Base64-encoded image data
+  metadata: z.object({
+    // Define the metadata schema
+    prompt: z.string(),
+    createdAt: z.string(),
+    coordinates: z.object({
+      x: z.number(),
+      y: z.number(),
+    }),
+    userPrompt: z.string().optional(),
+    imageDimensions: z.object({
+      width: z.number(),
+      height: z.number(),
+    }),
+  }),
 });
+type BackgroundResponse = z.infer<typeof backgroundResponseSchema>;
 
 const errorResponseSchema = z.object({
   error: z.string(),
@@ -16,24 +31,25 @@ const errorResponseSchema = z.object({
 export const fetchBackground = async (
   chunkX: number,
   chunkY: number,
+  worldName: string,
   userPrompt?: string,
-  aiService?: string,
-  world?: string
-): Promise<string> => {
+  aiService?: string
+): Promise<BackgroundResponse> => {
+  // ! TODO REMOVE
+  if (chunkX !== 0 || chunkY !== 0) throw new Error('DEACTIVATED');
+
   try {
-    const response = await axios.get(`${API_URL}/background`, {
-      params: {
-        x: chunkX.toString(),
-        y: chunkY.toString(),
-        userPrompt,
-        aiService,
-        world,
-      },
+    const response = await axios.post(`${API_URL}/background`, {
+      x: chunkX,
+      y: chunkY,
+      userPrompt,
+      aiService,
+      worldName,
     });
 
     // Validate response using Zod
     const parsedResponse = backgroundResponseSchema.parse(response.data);
-    return parsedResponse.imageData;
+    return parsedResponse;
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
       try {

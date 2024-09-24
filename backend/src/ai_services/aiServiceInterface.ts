@@ -1,4 +1,4 @@
-import { Metadata } from '../types/metadata';
+import { Metadata } from '../schemas/metadataSchema';
 
 export interface GenerateImageParams {
   prompt: string;
@@ -8,8 +8,7 @@ export interface GenerateImageParams {
 
 export interface GenerateImageResult {
   imageBuffer: Buffer;
-  metadata: Partial<Pick<Metadata, 'prompt' | 'createdAt' | 'coordinates' | 'userPrompt'>> &
-    Omit<Metadata, 'prompt' | 'createdAt' | 'coordinates' | 'userPrompt'>;
+  metadata: Pick<Metadata, 'service' | 'mode' | 'seed' | 'generationMeta'>;
 }
 
 export interface AiServiceInterface {

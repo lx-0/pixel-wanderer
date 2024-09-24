@@ -1,12 +1,14 @@
-import { LOGGER_CONFIG } from '@/config';
+import { LOGGER_CONFIG, VIEW_HEIGHT, VIEW_WIDTH } from '@/config';
 import MainScene from '@/game/scenes/MainScene';
 import { Logger } from '@/lib/Logger';
 import Phaser from 'phaser';
 
-const config: Phaser.Types.Core.GameConfig = {
+export const log = new Logger(LOGGER_CONFIG);
+
+export const PHASER_CONFIG: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: VIEW_WIDTH,
+  height: VIEW_HEIGHT,
   scene: [MainScene],
   physics: {
     default: 'arcade',
@@ -16,6 +18,4 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 };
 
-export const log = new Logger(LOGGER_CONFIG);
-
-new Phaser.Game(config);
+new Phaser.Game(PHASER_CONFIG);

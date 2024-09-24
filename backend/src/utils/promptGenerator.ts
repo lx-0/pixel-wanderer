@@ -1,7 +1,7 @@
 import fsSync from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
-import { Metadata } from '../types/metadata';
+import { Metadata } from '../schemas/metadataSchema';
 
 const generatedBackgroundsDir = path.join(__dirname, '../../generated_backgrounds');
 

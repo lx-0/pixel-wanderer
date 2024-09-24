@@ -42,6 +42,8 @@ export const dalleService: AiServiceInterface = {
       const metadata = {
         service: 'DALL·E',
         mode,
+        seed: undefined,
+        generationMeta: {},
       };
 
       return { imageBuffer, metadata };

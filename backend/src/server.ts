@@ -2,6 +2,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import backgroundRoute from './routes/backgroundRoute';
+import { LOGGER_CONFIG } from './config/Logger.config';
+import { Logger } from './utils/Logger';
+
+export const log = new Logger(LOGGER_CONFIG);
 
 dotenv.config();
 

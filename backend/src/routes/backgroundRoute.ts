@@ -1,17 +1,20 @@
 import { Request, Response, Router } from 'express';
-import { getBackground } from '../controllers/backgroundController';
-import { backgroundRequestSchema } from '../schemas/backgroundSchema';
+import { handleFetchOrGenerateBackground } from '../controllers/backgroundController';
+import { backgroundFetchOrGenerateSchema } from '../schemas/backgroundFetchOrGenerateSchema';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+// Unified route for background generation (for both starter and other backgrounds)
+router.post('/', async (req: Request, res: Response) => {
   try {
-    // Validate query parameters using Zod
-    const params = backgroundRequestSchema.parse(req.query);
-    await getBackground(params, res);
+    const { x, y, userPrompt, aiService, worldName } = backgroundFetchOrGenerateSchema.parse(
+      req.body
+    );
+
+    await handleFetchOrGenerateBackground({ x, y, userPrompt, aiService, worldName }, res);
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error('Error in background route:', error.message);
+      console.error('Error in background fetching/generation:', error.message);
       res.status(400).json({ error: error.message });
     }
   }
